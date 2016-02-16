@@ -1,0 +1,27 @@
+{
+  "name": "simple-development-environment",
+  "version": "0.0.1",
+  "authors": [
+    "Michael Bawiec <michael.bawiec@gmail.com>"
+  ],
+  "moduleType": [
+    "node"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.4",
+    "backbone": "~1.2.1",
+    "jquery-cookie": "~1.4.1",
+    "jquery-ui": "~1.11.4",
+    "bootstrap": "~3.3.4",
+    "underscore": "~1.8.3",
+    "requirejs": "~2.1.20"
+  }
+}
