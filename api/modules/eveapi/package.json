@@ -1,0 +1,22 @@
+{
+  "name": "eveapi",
+  "version": "1.0.0",
+  "description": "Eve Online API client for NodeJS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MDBox/eveonline_garage_sale.git"
+  },
+  "author": "michael.bawiec@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MDBox/eveonline_garage_sale/issues"
+  },
+  "homepage": "https://github.com/MDBox/eveonline_garage_sale#readme",
+  "dependencies": {
+    "oauth": "^0.9.14"
+  }
+}
