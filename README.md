@@ -8,7 +8,7 @@
 
 #### Project Details - We started the entire project from scratch, which included writing a library to communicate with crest and old xml api calls.  We implemeneted oauth and a few end-points for crest and xml api.  I would like to extract this api library for other node developers to use.  The application's backend is writen using nodejs with Express framework.  It is using SequalizeJS and MariaDB as a simple datastore.  
 
-#### Demo Server - 
+#### Demo Server - http://ec2-52-69-57-97.ap-northeast-1.compute.amazonaws.com:45480/
 
 #### Vargrant Server - Included in the project is a VagrantFile.  It bascially setup a simple development environment for you.  However, you still need to install a DB server and create an inital database.  
 
