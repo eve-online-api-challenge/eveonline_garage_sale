@@ -14,7 +14,7 @@ var createClient = function(args){
 	var clientdata = args || {};
 	clientdata.clientid = '0b4e5d8399b84598bade7484629b1ed0';
 	clientdata.secretkey = 'hQJbbbCOUi2NKUB7jrRJxVrqLDWbTMiDGNJ5Xnqy';
-	clientdata.callbackurl = 'http://192.168.33.11:45480/eve/callback';
+	clientdata.callbackurl = 'http://ec2-52-69-57-97.ap-northeast-1.compute.amazonaws.com:45480/eve/callback';
 	clientdata.productionmode = true;
 
 	return new EveClient(clientdata);
