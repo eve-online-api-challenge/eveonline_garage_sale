@@ -6,7 +6,7 @@
 
 ### Future Vision - We would like to show the EVE map and highlight where the player's value is located.  The map would be interactive so you could see which system has the most value.  Anoter future goal would be to share net-worth between player's contact list.    
 
-#### Project Details - We started the entire project from scratch, including the writing a library to communicate with crest and old xml api calls.  We implemeneted oauth and a few end-points for crest and xml api.  I would like to extract this api library for other node developers to use.  The application's backend is writen using nodejs with Express framework.  It is using SequalizeJS and MariaDB as a simple datastore.  
+#### Project Details - We started the entire project from scratch, which included writing a library to communicate with crest and old xml api calls.  We implemeneted oauth and a few end-points for crest and xml api.  I would like to extract this api library for other node developers to use.  The application's backend is writen using nodejs with Express framework.  It is using SequalizeJS and MariaDB as a simple datastore.  
 
 #### Demo Server - 
 
