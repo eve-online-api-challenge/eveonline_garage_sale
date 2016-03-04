@@ -1,7 +1,9 @@
 var express       = require('express'),
     router        = express.Router(),
     jsonwebtoken 	= require('jsonwebtoken'),
+    models        = require('../models'),
     bodyParser    = require('body-parser'),
+    parseString   = require('xml2js').parseString,
     EveClient 	  = require('../modules/eveapi/client').EveClient,
     Scope         = EveClient.Scope;
 
@@ -11,7 +13,7 @@ var createClient = function(args){
 	var clientdata = args || {};
 	clientdata.clientid = '0b4e5d8399b84598bade7484629b1ed0';
 	clientdata.secretkey = 'hQJbbbCOUi2NKUB7jrRJxVrqLDWbTMiDGNJ5Xnqy';
-	clientdata.callbackurl = 'http://192.168.33.10:45480/eve/callback';
+	clientdata.callbackurl = 'http://192.168.33.11:45480/eve/callback';
 	clientdata.productionmode = true;
 
 	return new EveClient(clientdata);
@@ -41,6 +43,7 @@ router.get('/callback', function(req, res){
 	var client = createClient();
 
 	client.getRefreshToken(req.query.code, function(err, access_token, refresh_token, results){
+    console.log(results);
 		var authtoken = jsonwebtoken.sign({access_token: access_token}, jwtkey, {expiresIn: results.expires_in});
 		var refreshtoken = jsonwebtoken.sign({refresh_token: refresh_token}, jwtkey);
 		var payload = {
@@ -49,6 +52,8 @@ router.get('/callback', function(req, res){
 			expiresIn: results.expires_in,
 			status: 0
 		}
+    res.cookie('access', authtoken, {maxAge: results.expires_in * 1000, httpOnly: true});
+    res.cookie('refresh', refreshtoken, {httpOnly: true});
 		//TODO redirect user
 		res.status(200).json(payload).end();
 	});
@@ -70,6 +75,7 @@ router.get('/access', function(req, res){
 				expiresIn: results.expires_in,
 				status: 0
 			}
+      res.cookie('access', authtoken, {maxAge: results.expires_in * 1000, httpOnly: true});
 			res.status(200).json(payload).end();
 		});
 	}catch(err){
@@ -81,11 +87,12 @@ router.get('/access', function(req, res){
 router.use(bodyParser.urlencoded({extended: false}));
 router.use(bodyParser.json());
 router.use('/', function(req, res, next){
-  var refresh_token = req.query.refresh_token || null;
-  var access_token = req.query.access_token || null;
+  var refresh_token = req.query.refresh_token || req.cookies['refresh'] || null;
+  var access_token = req.query.access_token || req.cookies['access'] || null;
 
   if(refresh_token){
     req.body.refresh = jsonwebtoken.verify(refresh_token, jwtkey);
+    console.log(req.body.refresh);
   }
   if(access_token){
     try{
@@ -100,28 +107,159 @@ router.use('/', function(req, res, next){
 })
 
 router.get('/user', function(req, res){
+  var vCode = req.query.vCode || '';
+  var keyID = req.query.keyID || '';
+
   var client = createClient({access_token: req.body.token.access_token});
   var crest = client.getCrestClient();
   crest.getUserInfo(null, function(err, results){
     console.log(results);
+    var jsonresults = JSON.parse(results);
+    models.User.findOrCreate({
+      where:{
+        CharacterID: jsonresults.CharacterID
+      },
+      defaults: {
+        CharacterID: jsonresults.CharacterID,
+        CharacterName: jsonresults.CharacterName,
+        refresh_token: req.body.refresh.refresh_token,
+        vCode: vCode,
+        keyID: keyID
+      }
+    }).spread(function(character, created){
+      if(!created){
+        character.set({
+          refresh_token: req.body.refresh,
+          vCode: vCode,
+          keyID: keyID
+        })
+        character.save();
+      }
+    }).catch(function(err){
+      console.log('error saving DB: ' + err);
+    });
+    res.status(200).json(jsonresults).end();
   });
 })
 
-router.get('/contract', function(req, res){
+router.get('/contacts', function(req, res){
   var client = createClient({access_token: req.body.token.access_token});
   var crest = client.getCrestClient();
-  crest.getContracts({charid: '145800005'}, function(err, results){
-    console.log(results);
+  console.log(req.query.charid);
+  crest.getContacts({charid: req.query.charid}, function(err, results){
+    //console.log(results);
+    res.status(200).json(JSON.parse(results)).end();
   });
 });
 
-router.post('/contract', function(req, res){
+router.get('/netvalue', function(req, res){
+    var charid = req.query.charid || null;
+    models.User.find({
+      where:{
+        CharacterID: charid
+      }
+    }).then(function(results){
+      res.status(200).json({networth: results.netvalue});
+    }).catch(function(error){
+      res.status(400).json({status: 9, error: 'not found'});
+    });
+})
 
+router.get('/assets', function(req, res){
+  var charid = req.query.charid || null;
+
+  models.User.find({
+    where:{
+      CharacterID: charid
+    }
+  }).then(function(character){
+    var client = createClient();
+    var crest = client.getCrestClient();
+
+    var args = {
+      characterID: character.CharacterID,
+      vCode: character.vCode,
+      keyID: character.keyID
+    }
+
+    crest.getCharacterBalance(args, function(err, results){
+      parseString(results, function(err, jsonresults){
+        console.log(JSON.stringify(jsonresults));
+        var value = new Number(jsonresults.eveapi.result[0].rowset[0].row[0].$.balance) || 0;
+        console.log('account balance: ' + value);
+        crest.getAssets(args, function(err, results){
+          parseString(results, function(err, jsonresults){
+            var count = 0;
+            jsonresults.eveapi.result[0].rowset[0].row.forEach(function(item, index, arry){
+              //console.log(item.$.typeID);
+
+              models.Market.find({
+                where: {
+                  id: item.$.typeID
+                }
+              }).then(function(data){
+                if(data.averagePrice){
+                  value += item.$.quantity * data.averagePrice;
+                }else{
+                  value += item.$.quantity * data.adjustedPrice;
+                }
+                count++;
+                //console.log(count + ' ' + arry.length);
+
+                if(count == arry.length){
+                  console.log(value);
+                  character.set({
+                    netvalue: value
+                  })
+                  character.save();
+                }
+              }).catch(function(err){
+                count++;
+                //console.log(err);
+              })
+            });
+            res.status(200).json({status:0}).end();
+          })
+        });
+      });
+    });
+  }).catch(function(err){
+    res.status(400).json({status:9, error:'char id not found'});
+  });
 });
 
-router.get('/location', function(req, res){
-
-});
+// router.get('/market/prices/', function(req, res){
+//   var client = createClient();
+//   var crest = client.getCrestClient();
+//   crest.getMarketPrices(function(err, results){
+//     var jsonresults = JSON.parse(results);
+//     jsonresults.items.forEach(function(item){
+//       models.Market.findOrCreate({
+//         where:{
+//           id: item.type.id_str
+//         },
+//         defaults: {
+//           id: item.type.id_str,
+//           name: item.type.name,
+//           adjustedPrice: item.adjustedPrice,
+//           averagePrice: item.averagePrice
+//         }
+//       }).spread(function(resutls, created){
+//           if(!created){
+//             results.set({
+//               name: item.name,
+//               adjustedPrice: item.adjustedPrice,
+//               averagePrice: item.averagePrice
+//             })
+//             results.save();
+//           }
+//         }).catch(function(err){
+//           console.log(err);
+//         });
+//     });
+//     res.status(200).json(jsonresults).end();
+//   });
+// });
 
 
 

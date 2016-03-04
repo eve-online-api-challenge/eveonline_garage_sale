@@ -1,34 +1,43 @@
+var eveapiModule = angular.module('eveapi', ['ngResource']);
 
-define(
-  [ 'jquery',
-    'underscore',
-    'backbone',
-    'model/eveapiauth',
-    'model/eveapichar']
-    function($,_,Backbone, M_EVEAPIAUTH, M_EVEAPICHAR){
-      var APP = (function(){
-        var App = function(){
-          this.auth = null;
-          this.character = null;
-        }
 
-        App.prototype.setAuth = function(auth){
-          this.auth = M_EVEAPIAUTH.Model(auth);
-        }
 
-        App.prototype.getAuth = function(){
-          return this.auth;
-        }
-
-        App.prototype.setCharacter = function(chardata){
-          this.character = M_EVEAPICHAR.Model(chardata);
-        }
-
-        App.prototype.getCharacter = function(){
-          return this.character;
-        }
-
-        return new App();
-      })();
-      return APP;
+eveapiModule.factory('Character', ['$resource',
+  function($resource){
+    return $resource('/eve/user/', {}, {
+      query: {method:'GET', params:{}, isArray:false}
     });
+}]);
+
+eveapiModule.factory('Contacts', ['$resource',
+  function($resource){
+    return $resource('/eve/contacts', {}, {
+      query: {method:'GET', params:{charid: $resource.charid}, isArray:false}
+    });
+}]);
+
+eveapiModule.factory('Netvalue', ['$resource',
+  function($resource){
+    return $resource('/eve/netvalue?charid=145800005', {}, {
+      query: {method:'GET', params:{charid: '145800005'}, isArray:false}
+    });
+}]);
+
+eveapiModule.controller('AppController', ['$scope', function($scope){
+}]);
+
+eveapiModule.controller('CharacterController', ['$scope', 'Character', function($scope, Character){
+  $scope.character = Character.query();
+}]);
+
+eveapiModule.controller('NetvalueController', ['$scope', 'Netvalue', function($scope, Netvalue){
+  $scope.$parent.$watch('character.CharacterID', function(charid){
+    $scope.netvalue = Netvalue.query({charid: charid });
+  });
+}]);
+
+eveapiModule.controller('ContactsController', ['$scope', 'Contacts', function($scope, Contacts){
+  $scope.$parent.$watch('character.CharacterID', function(charid){
+    $scope.contacts = Contacts.query({charid: charid });
+  });
+}]);

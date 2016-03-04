@@ -1,12 +1,32 @@
-<html>
+<!DOCTYPE html>
+<html ng-app="eveapi">
 <head>
-  <title>Simple Development Environment</title>
+  <title>EvE Character Net Worth</title>
   <link rel="stylesheet" type="text/css" href="/css/test.css">
 </head>
-<body>
+<body ng-controller="AppController">
+  <div id="container" ng-controller="CharacterController">
+    <img ng-src="http://imageserver.eveonline.com/Character/{{character.CharacterID}}_128.jpg"></img>
+    <h1>Hello {{character.CharacterName}}</h1>
+    <br>
+    <span ng-controller="NetvalueController">
+      <h2>You are currently worth {{netvalue.networth}} isk </h2>
+    </span>
+    <span ng-controller="ContactsController">
+      <span ng-repeat="contact in contacts.items">
+        <div>
+          <img ng-src="{{contact.character.portrait['64x64'].href}}"></img>
+          {{contact.character.name}}
+        </div>
+      </span>
+    </span>
+  </div>
 
-<div class="test">Hello world</div>
-
-<script data-main="/js/main" src="/lib/requirejs/require.js"></script>
+  <script src="/lib/jquery/dist/jquery.min.js"></script>
+  <script src="/lib/bootstrap/dist/js/bootstrap.min.js"></script>
+  <script src="/lib/angular/angular.js"></script>
+  <script src="/lib/angular-route/angular-route.js"></script>
+  <script src="/lib/angular-resource/angular-resource.js"></script>
+  <script src="/js/app.js"></script>
 </body>
 </head>

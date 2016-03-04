@@ -40,6 +40,7 @@
     "oauth": "^0.9.14",
     "scribe-js": "^2.0.4",
     "sequelize": "^3.19.2",
-    "validator": "^4.7.1"
+    "validator": "^4.7.1",
+    "xml2js": "^0.4.16"
   }
 }

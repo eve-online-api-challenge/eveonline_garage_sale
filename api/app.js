@@ -1,8 +1,12 @@
 var express 		= require('express'),
+		cookieParser 	= require('cookie-parser'),
 		http 				= require('http'),
+		path		      = require("path"),
 		https  			= require('https'),
 		models 			= require('./models');
 
+
+var publicfolder = path.join(__dirname, '..', 'public');
 
 //var config = require('config');
 var server_options = {
@@ -21,7 +25,7 @@ var secure_options = {
 var app = module.exports = express();
 var server = http.createServer(app);
 //var sserver = https.createServer(secure_options, app);
-
+app.use(cookieParser());
 
 
 
@@ -32,13 +36,10 @@ var server = http.createServer(app);
 app.use('/eve', require('./routers/eveapi'));
 
 app.get('/', function(req, res){
-	console.log('get');
-	res.send('hello test 4');
-	res.end();
+	res.sendFile(publicfolder + '/html/index.html');
 });
 
-
-
+app.use('/', express.static(publicfolder));
 
 // ==== start server non secure ====
 server.listen(server_options.port, function(){
