@@ -3,7 +3,8 @@ var express 		= require('express'),
 		http 				= require('http'),
 		path		      = require("path"),
 		https  			= require('https'),
-		models 			= require('./models');
+		models 			= require('./models'),
+		evemarket 	= require('./routers/eveapi');
 
 
 var publicfolder = path.join(__dirname, '..', 'public');
@@ -39,11 +40,20 @@ app.get('/', function(req, res){
 	res.sendFile(publicfolder + '/html/index.html');
 });
 
+app.get('/user', function(req, res){
+	res.sendFile(publicfolder + '/html/user.html');
+});
+
+app.get('/character', function(req, res){
+	res.sendFile(publicfolder + '/html/character.html');
+});
+
 app.use('/', express.static(publicfolder));
 
 // ==== start server non secure ====
 server.listen(server_options.port, function(){
 	console.log('listening on *:' + server.address().port);
+	//evemarket.updateMarketData();
 })
 
 // ==== start server secure ====

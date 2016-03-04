@@ -18,8 +18,8 @@ eveapiModule.factory('Contacts', ['$resource',
 
 eveapiModule.factory('Netvalue', ['$resource',
   function($resource){
-    return $resource('/eve/netvalue?charid=145800005', {}, {
-      query: {method:'GET', params:{charid: '145800005'}, isArray:false}
+    return $resource('/eve/netvalue', {}, {
+      query: {method:'GET', params:{charid: $resource.charid}, isArray:false}
     });
 }]);
 
@@ -27,12 +27,15 @@ eveapiModule.controller('AppController', ['$scope', function($scope){
 }]);
 
 eveapiModule.controller('CharacterController', ['$scope', 'Character', function($scope, Character){
-  $scope.character = Character.query();
+  $scope.character = Character.query(function(){
+  });
 }]);
 
 eveapiModule.controller('NetvalueController', ['$scope', 'Netvalue', function($scope, Netvalue){
   $scope.$parent.$watch('character.CharacterID', function(charid){
-    $scope.netvalue = Netvalue.query({charid: charid });
+    $scope.netvalue = Netvalue.query({charid: charid }).$promise.then(function(v, value){
+      $scope.value = v.networth.toLocaleString();
+    });
   });
 }]);
 

@@ -5,11 +5,16 @@
   <link rel="stylesheet" type="text/css" href="/css/test.css">
 </head>
 <body ng-controller="AppController">
-  <h1>Eve Net Worth Calulator</h1>
-  </br>
-  <div id="container">
-
-    <a href="/eve/login"><img src="/img/evelogin.png"></img></a>
+  <div id="container" ng-controller="CharacterController">
+    <img ng-src="http://imageserver.eveonline.com/Character/{{character.CharacterID}}_128.jpg"></img>
+    <h1>Hello {{character.CharacterName}}</h1>
+    <br>
+    <form action="/eve/user" method="POST">
+      keyID: <input type="text" name="keyID"></br>
+      vCode: <input type="text" name="vCode"></br>
+      charid: <input type="hidden" name="charid" value="{{character.CharacterID}}">
+      <button type="submit">Submit</button>
+    </form>
   </div>
   <script src="/lib/jquery/dist/jquery.min.js"></script>
   <script src="/lib/bootstrap/dist/js/bootstrap.min.js"></script>

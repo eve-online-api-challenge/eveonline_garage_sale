@@ -3,6 +3,7 @@ var express       = require('express'),
     jsonwebtoken 	= require('jsonwebtoken'),
     models        = require('../models'),
     bodyParser    = require('body-parser'),
+    bodyParser    = require('body-parser'),
     parseString   = require('xml2js').parseString,
     EveClient 	  = require('../modules/eveapi/client').EveClient,
     Scope         = EveClient.Scope;
@@ -18,6 +19,9 @@ var createClient = function(args){
 
 	return new EveClient(clientdata);
 }
+
+router.use(bodyParser.urlencoded({extended: false}));
+router.use(bodyParser.json());
 
 router.get('/login', function(req, res){
 	var stateToken = jsonwebtoken.sign({valid: 0}, jwtkey, {expiresIn: "20m"});
@@ -55,7 +59,7 @@ router.get('/callback', function(req, res){
     res.cookie('access', authtoken, {maxAge: results.expires_in * 1000, httpOnly: true});
     res.cookie('refresh', refreshtoken, {httpOnly: true});
 		//TODO redirect user
-		res.status(200).json(payload).end();
+		res.redirect('/user');
 	});
 });
 
@@ -106,68 +110,7 @@ router.use('/', function(req, res, next){
   res.status(400).json({error: 'needs access_token', status: 1});
 })
 
-router.get('/user', function(req, res){
-  var vCode = req.query.vCode || '';
-  var keyID = req.query.keyID || '';
-
-  var client = createClient({access_token: req.body.token.access_token});
-  var crest = client.getCrestClient();
-  crest.getUserInfo(null, function(err, results){
-    console.log(results);
-    var jsonresults = JSON.parse(results);
-    models.User.findOrCreate({
-      where:{
-        CharacterID: jsonresults.CharacterID
-      },
-      defaults: {
-        CharacterID: jsonresults.CharacterID,
-        CharacterName: jsonresults.CharacterName,
-        refresh_token: req.body.refresh.refresh_token,
-        vCode: vCode,
-        keyID: keyID
-      }
-    }).spread(function(character, created){
-      if(!created){
-        character.set({
-          refresh_token: req.body.refresh,
-          vCode: vCode,
-          keyID: keyID
-        })
-        character.save();
-      }
-    }).catch(function(err){
-      console.log('error saving DB: ' + err);
-    });
-    res.status(200).json(jsonresults).end();
-  });
-})
-
-router.get('/contacts', function(req, res){
-  var client = createClient({access_token: req.body.token.access_token});
-  var crest = client.getCrestClient();
-  console.log(req.query.charid);
-  crest.getContacts({charid: req.query.charid}, function(err, results){
-    //console.log(results);
-    res.status(200).json(JSON.parse(results)).end();
-  });
-});
-
-router.get('/netvalue', function(req, res){
-    var charid = req.query.charid || null;
-    models.User.find({
-      where:{
-        CharacterID: charid
-      }
-    }).then(function(results){
-      res.status(200).json({networth: results.netvalue});
-    }).catch(function(error){
-      res.status(400).json({status: 9, error: 'not found'});
-    });
-})
-
-router.get('/assets', function(req, res){
-  var charid = req.query.charid || null;
-
+var calculateNetvalue = function(charid, vCode, keyID, callback){
   models.User.find({
     where:{
       CharacterID: charid
@@ -177,9 +120,9 @@ router.get('/assets', function(req, res){
     var crest = client.getCrestClient();
 
     var args = {
-      characterID: character.CharacterID,
-      vCode: character.vCode,
-      keyID: character.keyID
+      characterID: charid,
+      vCode: vCode,
+      keyID: keyID
     }
 
     crest.getCharacterBalance(args, function(err, results){
@@ -212,21 +155,144 @@ router.get('/assets', function(req, res){
                     netvalue: value
                   })
                   character.save();
+                  callback(null, value);
                 }
               }).catch(function(err){
                 count++;
-                //console.log(err);
               })
             });
-            res.status(200).json({status:0}).end();
           })
         });
       });
     });
   }).catch(function(err){
-    res.status(400).json({status:9, error:'char id not found'});
+    callback('char id not found: ' + err);
+  });
+}
+
+router.post('/user/', function(req, res){
+  var vCode = req.body.vCode || '';
+  var keyID = req.body.keyID || '';
+  var charid = req.body.charid || '';
+
+  models.User.find({
+    where: {
+      CharacterID: charid
+    }
+  }).then(function(character){
+    character.set({
+      vCode: vCode,
+      keyID: keyID
+    })
+    character.save();
+    calculateNetvalue(charid, vCode, keyID, function(value){
+      console.log('char id(' + charid + ') is has ' + value);
+      res.redirect('/character');
+    })
+  }).catch(function(err){
+    res.redirect('/');
   });
 });
+
+router.get('/user', function(req, res){
+  var vCode = req.query.vCode || '';
+  var keyID = req.query.keyID || '';
+
+  var client = createClient({access_token: req.body.token.access_token});
+  var crest = client.getCrestClient();
+  crest.getUserInfo(null, function(err, results){
+    console.log(results);
+    var jsonresults = JSON.parse(results);
+    models.User.findOrCreate({
+      where:{
+        CharacterID: jsonresults.CharacterID
+      },
+      defaults: {
+        CharacterID: jsonresults.CharacterID,
+        CharacterName: jsonresults.CharacterName,
+        refresh_token: req.body.refresh.refresh_token,
+        vCode: vCode,
+        keyID: keyID
+      }
+    }).spread(function(character, created){
+      if(!created){
+        character.set({
+          refresh_token: req.body.refresh,
+          vCode: vCode,
+          keyID: keyID
+        })
+        character.save();
+      }else{
+        //calculateNetvalue(character.CharacterID, vCode, keyID, function(){});
+      }
+    }).catch(function(err){
+      console.log('error saving DB: ' + err);
+    });
+    res.status(200).json(jsonresults).end();
+  });
+})
+
+router.get('/contacts', function(req, res){
+  var client = createClient({access_token: req.body.token.access_token});
+  var crest = client.getCrestClient();
+  console.log(req.query.charid);
+  crest.getContacts({charid: req.query.charid}, function(err, results){
+    res.status(200).json(JSON.parse(results)).end();
+  });
+});
+
+router.get('/netvalue', function(req, res){
+    var charid = req.query.charid || null;
+    models.User.find({
+      where:{
+        CharacterID: charid
+      }
+    }).then(function(results){
+      res.status(200).json({networth: results.netvalue});
+    }).catch(function(error){
+      res.status(400).json({status: 9, error: 'not found'});
+    });
+})
+
+var updateMarketData = function(){
+  var client = createClient();
+  var crest = client.getCrestClient();
+  crest.getMarketPrices(function(err, results){
+    var jsonresults = JSON.parse(results);
+    jsonresults.items.forEach(function(item){
+      models.Market.findOrCreate({
+        where:{
+          id: item.type.id_str
+        },
+        defaults: {
+          id: item.type.id_str,
+          name: item.type.name,
+          adjustedPrice: item.adjustedPrice,
+          averagePrice: item.averagePrice
+        }
+      }).spread(function(resutls, created){
+          if(!created){
+            results.set({
+              name: item.name,
+              adjustedPrice: item.adjustedPrice,
+              averagePrice: item.averagePrice
+            })
+            results.save();
+          }
+        }).catch(function(err){
+          console.log(err);
+        });
+    });
+  });
+}
+
+
+
+// router.get('/assets', function(req, res){
+//   var charid = req.query.charid || null;
+//
+//
+// });
 
 // router.get('/market/prices/', function(req, res){
 //   var client = createClient();
@@ -264,3 +330,4 @@ router.get('/assets', function(req, res){
 
 
 module.exports = router;
+module.exports.updateMarketData = updateMarketData;
